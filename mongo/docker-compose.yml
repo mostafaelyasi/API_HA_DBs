@@ -1,0 +1,88 @@
+version: '3.9'
+
+services:
+  mongo1:
+    container_name: mongo1
+    image: mongo:4.4.18-rc0-focal
+    volumes:
+      - ./data1:/data/db
+      - ./rs-init.sh:/scripts/rs-init.sh
+      - ./file.key:/data/file.key
+    networks:
+      - mongors-network
+    ports:
+      - 27021:27017
+    restart: always
+    healthcheck:
+      test: test $$(echo "rs.status().ok" | mongo --port 27017 --quiet -u admin -p password --authenticationDatabase admin) -eq 1
+      interval: 10s
+      start_period: 30s
+    entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "dbrs","--keyFile", "/data/file.key" ]
+    #environment:
+    #  MONGO_INITDB_DATABASE: testdb
+    #  MONGO_INITDB_ROOT_USERNAME: root
+    #  MONGO_INITDB_ROOT_PASSWORD: admin
+    links:
+      - mongo2
+      - mongo3
+    depends_on:
+      - mongo2
+      - mongo3
+  mongo2:
+    container_name: mongo2
+    image: mongo:4.4.18-rc0-focal
+    volumes:
+      - ./data2:/data/db
+      - ./file.key:/data/file.key
+    networks:
+      - mongors-network
+    ports:
+      - 27022:27017
+    restart: always
+    entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "dbrs","--keyFile", "/data/file.key" ]
+    #environment:
+    #  MONGO_INITDB_DATABASE: testdb
+    #  MONGO_INITDB_ROOT_USERNAME: root
+    #  MONGO_INITDB_ROOT_PASSWORD: admin    
+  mongo3:
+    container_name: mongo3
+    image: mongo:4.4.18-rc0-focal
+    volumes:
+      - ./data3:/data/db
+      - ./file.key:/data/file.key
+    networks:
+      - mongors-network
+    ports:
+      - 27023:27017
+    restart: always
+    entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "dbrs" ,"--keyFile", "/data/file.key"]
+    #environment:
+    #  MONGO_INITDB_DATABASE: testdb
+    #  MONGO_INITDB_ROOT_USERNAME: root
+    #  MONGO_INITDB_ROOT_PASSWORD: admin
+  mongo-express:
+    image: mongo-express:1.0.0-alpha.4
+    restart: unless-stopped
+    ports:
+      - 27024:8081
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      ME_CONFIG_MONGODB_ADMINPASSWORD: password
+      ME_CONFIG_MONGODB_SERVER: mongo1
+      #ME_CONFIG_MONGODB_URL: mongodb://root:admin@mongo1:27017/
+      ME_CONFIG_BASICAUTH_USERNAME: mexpress
+      ME_CONFIG_BASICAUTH_PASSWORD: mexpress      
+    networks:
+      - mongors-network
+    links: 
+      - mongo1:mongo1     
+    depends_on:
+      - mongo1
+networks:
+  mongors-network:
+
+#openssl rand -base64 700 > file.key          
+#chmod 400 file.key
+#https://blog.tericcabrel.com/mongodb-replica-set-docker-compose/
+#https://prashix.medium.com/setup-mongodb-replicaset-with-authentication-enabled-using-docker-compose-5edd2ad46a90
+#mongo -u admin -p password --authenticationDatabase admin

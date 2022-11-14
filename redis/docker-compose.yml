@@ -1,0 +1,21 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:latest
+    restart: always
+    ports:
+      - 6379:6379
+    command: --requirepass ACCESSKEYservers --save 60 1000 --loglevel warning
+    volumes:
+      - ./data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - redis-net
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+networks:
+  redis-net:
+
